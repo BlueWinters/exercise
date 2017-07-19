@@ -1,2 +1,2 @@
-# exercise
-exercise notes
+# Exercise
+Exercise Notes
