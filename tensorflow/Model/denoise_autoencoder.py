@@ -1,17 +1,20 @@
 # tensorflow version 1.10
 
 import tensorflow as tf
+import numpy as np
 import os
 import time
 
 from tensorflow.examples.tutorials.mnist import input_data
 
-class Autoencoder(object):
-    def __init__(self, sess, encoder, z_dim, decoder, name='Autoencoder'):
+class DenoiseAutoencoder(object):
+    def __init__(self, sess, encoder, z_dim, decoder, noise='Gaussian', name='DenoiseAutoencoder'):
         self.encoder = encoder
         self.z_dim = z_dim
         self.decoder = decoder
         self.name = name
+        self.noise = noise
+        # session
         self.sess = sess
 
         self._init_vars()
@@ -47,15 +50,16 @@ class Autoencoder(object):
         return k, b
 
     def _feedward(self, input, name):
-        with tf.variable_scope(name, reuse=True) as vs:
-            W = tf.get_variable('W')
-            b = tf.get_variable('b')
-            a = tf.matmul(input, W) + b
-        return tf.nn.sigmoid(a)
+         with tf.variable_scope(name, reuse=True) as vs:
+             W = tf.get_variable('W')
+             b = tf.get_variable('b')
+             a = tf.matmul(input, W) + b
+         return tf.nn.sigmoid(a)
 
-    def loss(self, input):
+    def loss(self, input, noise):
         h = []
-        h.append(input)
+        # noise input
+        h.append(input+noise)
 
         with tf.variable_scope(self.name, reuse=True) as vs:
             # encoder
@@ -99,10 +103,11 @@ if __name__ == '__main__':
 
     # construct model
     sess = tf.Session()
-    ae = Autoencoder(sess, encoder=encoder, z_dim=z_dim, decoder=decoder)
+    ae = DenoiseAutoencoder(sess, encoder=encoder, z_dim=z_dim, decoder=decoder, noise='Gaussian')
     input = tf.placeholder(tf.float32, shape)
+    noise = tf.placeholder(tf.float32, shape)
     # initialize model
-    loss = ae.loss(input)
+    loss = ae.loss(input, noise)
 
     # set optimizer
     optimizer = tf.train.AdamOptimizer(learning_rate=learn_rate)
@@ -118,10 +123,13 @@ if __name__ == '__main__':
         total_batch = int(mnist.train.num_examples / batch_size)
         avg_loss = 0
         for i in range(total_batch):
+            # get data
             batch_x, _ = mnist.train.next_batch(batch_size)
+            # get noise
+            noise_batch = np.random.normal(loc=0, scale=1.0, size=shape)
 
             batch_x = batch_x.reshape(shape)
-            l, _ = sess.run([loss, train], {input: batch_x})
+            l, _ = sess.run([loss, train], {input: batch_x, noise: noise_batch})
             avg_loss += l / total_batch
 
         print("Epoch : {:04d}, Loss : {:9f}".format(epoch + 1, avg_loss))

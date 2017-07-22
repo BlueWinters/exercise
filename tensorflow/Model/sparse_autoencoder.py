@@ -6,12 +6,15 @@ import time
 
 from tensorflow.examples.tutorials.mnist import input_data
 
-class Autoencoder(object):
-    def __init__(self, sess, encoder, z_dim, decoder, name='Autoencoder'):
+class SparseAutoencoder(object):
+    def __init__(self, sess, encoder, z_dim, decoder, alpha, sparsity=0.1, name='Autoencoder'):
         self.encoder = encoder
         self.z_dim = z_dim
         self.decoder = decoder
+        self.alpha = alpha
+        self.sparsity = sparsity
         self.name = name
+        # session
         self.sess = sess
 
         self._init_vars()
@@ -46,6 +49,11 @@ class Autoencoder(object):
                                 initializer=tf.constant_initializer(0))
         return k, b
 
+    def _get_W_square(self, name):
+        with tf.variable_scope(name, reuse=True) as vs:
+            W = tf.get_variable('W')
+        return tf.reduce_sum(tf.square(W))
+
     def _feedward(self, input, name):
         with tf.variable_scope(name, reuse=True) as vs:
             W = tf.get_variable('W')
@@ -59,21 +67,27 @@ class Autoencoder(object):
 
         with tf.variable_scope(self.name, reuse=True) as vs:
             # encoder
-            in_list = self.encoder[:]
-            out_list = self.encoder[1:]
-            out_list.append(self.z_dim)
+            n_encoder = len(self.encoder)
             with tf.variable_scope('encoder', reuse=True) as vs:
-                for n, (in_dim, out_dim) in enumerate(zip(in_list, out_list)):
+                for n in range(n_encoder):
                     h.append(self._feedward(h[-1], 'layer_'+str(n)))
+
+            # W^2
+            w_square = self._get_W_square('layer_'+str(n))
+
+            # sparse penalty
+            rho = tf.reduce_mean(h[-1], axis=0, keep_dims=True)
+            term = self.sparsity * tf.log(self.sparsity/rho) + \
+                             (1 - self.sparsity) * tf.log((1-self.sparsity)/(1-rho))
+            sparse_penalty = tf.reduce_mean(term)
+
             # decoder
-            in_list = [self.z_dim]
-            in_list.extend(self.decoder[:-1])
-            out_list = self.decoder[:]
+            n_decoder = len(self.decoder)
             with tf.variable_scope('decoder', reuse=True) as vs:
-                for n, (in_dim, out_dim) in enumerate(zip(in_list, out_list)):
+                for n in range(n_decoder):
                     h.append(self._feedward(h[-1], 'layer_'+str(n)))
-        # return MSE loss
-        return tf.reduce_mean(tf.square(h[-1] - input))
+        # return loss
+        return tf.reduce_mean(tf.square(h[-1] - input)) + sparse_penalty + w_square
 
     def save(self, path):
         saver = tf.train.Saver(self.vars)
@@ -99,7 +113,7 @@ if __name__ == '__main__':
 
     # construct model
     sess = tf.Session()
-    ae = Autoencoder(sess, encoder=encoder, z_dim=z_dim, decoder=decoder)
+    ae = SparseAutoencoder(sess, encoder=encoder, z_dim=z_dim, decoder=decoder)
     input = tf.placeholder(tf.float32, shape)
     # initialize model
     loss = ae.loss(input)

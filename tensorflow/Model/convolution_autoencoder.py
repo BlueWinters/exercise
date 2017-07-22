@@ -6,11 +6,11 @@ import time
 
 from tensorflow.examples.tutorials.mnist import input_data
 
-class Autoencoder(object):
-    def __init__(self, sess, encoder, z_dim, decoder, name='Autoencoder'):
-        self.encoder = encoder
-        self.z_dim = z_dim
-        self.decoder = decoder
+class ConvolutionAutoencoder(object):
+    def __init__(self, sess, input_shape, encoder_filter, decoder_filter, name='ConvolutionAutoencoder'):
+        self.input_shape = input_shape
+        self.encoder = encoder_filter
+        self.decoder = decoder_filter
         self.name = name
         self.sess = sess
 
@@ -23,55 +23,57 @@ class Autoencoder(object):
             self._init_decoder_vars()
 
     def _init_encoder_vars(self):
-        in_list = self.encoder[:]
-        out_list = self.encoder[1:]
-        out_list.append(self.z_dim)
-        with tf.variable_scope('encoder') as vs:
-            for n, (in_dim, out_dim) in enumerate(zip(in_list, out_list)):
-                self._set_layer_vars(in_dim=in_dim, out_dim=out_dim, name="layer_"+str(n))
+        n_encoder = len(self.encoder)
+        channels_set = [self.input_shape[-1]] # input channels
+        for n in range(n_encoder):
+            channels_set.extend(self.encoder[n][-1])
+
+        for n in range(n_encoder):
+            self._init_conv_vars(width=self.encoder[n][0], height=self.encoder[n][0],
+                                 in_chls=channels_set[n], out_chls=channels_set[n+1],
+                                 name='layer_'+str(n))
 
     def _init_decoder_vars(self):
-        in_list = [self.z_dim]
-        in_list.extend(self.decoder[:-1])
-        out_list = self.decoder[:]
-        with tf.variable_scope('decoder') as vs:
-            for n, (in_dim, out_dim) in enumerate(zip(in_list, out_list)):
-                self._set_layer_vars(in_dim=in_dim, out_dim=out_dim, name="layer_"+str(n))
+        n_decoder = len(self.decoder)
+        channels_set = [self.encoder[-1][-1]] # middle channels
+        for n in range(n_decoder):
+            channels_set.extend(self.decoder[n][-1])
 
-    def _set_layer_vars(self, in_dim, out_dim, name, stddev=0.1):
+        for n in range(n_decoder):
+            self._init_conv_vars(width=self.decoder[n][0], height=self.decoder[n][0],
+                                 in_chls=channels_set[n], out_chls=channels_set[n+1],
+                                 name='layer_'+str(n))
+
+    def _set_layer_filter_vars(self, width, height, in_chls, out_chls, name, std):
         with tf.variable_scope(name) as vs:
-            k = tf.get_variable('W', [in_dim, out_dim],
-                                initializer=tf.truncated_normal_initializer(stddev=stddev))
-            b = tf.get_variable('b', [out_dim],
+            k = tf.get_variable('filter', [width, height, in_chls, out_chls],
+                                initializer=tf.truncated_normal_initializer(stddev=std))
+            b = tf.get_variable('biases', [out_chls],
                                 initializer=tf.constant_initializer(0))
         return k, b
 
-    def _feedward(self, input, name):
+    def _conv(self, input, name):
         with tf.variable_scope(name, reuse=True) as vs:
-            W = tf.get_variable('W')
-            b = tf.get_variable('b')
-            a = tf.matmul(input, W) + b
-        return tf.nn.sigmoid(a)
+            W = tf.get_variable('filter')
+            b = tf.get_variable('biases')
+            conv = tf.nn.conv2d(input, W, [1, 1, 1, 1], "SAME") + b
+        return conv
 
     def loss(self, input):
+        n_encoder = len(self.encoder)
+        n_decoder = len(self.decoder)
         h = []
         h.append(input)
 
         with tf.variable_scope(self.name, reuse=True) as vs:
             # encoder
-            in_list = self.encoder[:]
-            out_list = self.encoder[1:]
-            out_list.append(self.z_dim)
             with tf.variable_scope('encoder', reuse=True) as vs:
-                for n, (in_dim, out_dim) in enumerate(zip(in_list, out_list)):
-                    h.append(self._feedward(h[-1], 'layer_'+str(n)))
+                for n, in range(n_encoder):
+                    h.append(self._conv(h[-1], 'layer_'+str(n)))
             # decoder
-            in_list = [self.z_dim]
-            in_list.extend(self.decoder[:-1])
-            out_list = self.decoder[:]
             with tf.variable_scope('decoder', reuse=True) as vs:
-                for n, (in_dim, out_dim) in enumerate(zip(in_list, out_list)):
-                    h.append(self._feedward(h[-1], 'layer_'+str(n)))
+                for n in range(n_decoder):
+                    h.append(self._conv(h[-1], 'layer_'+str(n)))
         # return MSE loss
         return tf.reduce_mean(tf.square(h[-1] - input))
 
@@ -89,17 +91,18 @@ class Autoencoder(object):
 
 if __name__ == '__main__':
     # set parameters
-    encoder = [28*28]
-    z_dim = 1000
-    decoder = [28*28]
+    encoder_filter = [[5, 5, 128], [5, 5, 64], [5, 5, 32]] # [width, height, channel]
+    decoder_filter = [[5, 5, 64], [5, 5, 128], [5, 5, 1]]
     num_epochs = 100
     batch_size = 100
     learn_rate = 1e-3
-    shape = [batch_size, 28*28]
+    input_shape = [28, 28, 1]
+    shape = [batch_size, 28, 28, 1]
 
     # construct model
     sess = tf.Session()
-    ae = Autoencoder(sess, encoder=encoder, z_dim=z_dim, decoder=decoder)
+    ae = ConvolutionAutoencoder(sess, input_shape=input_shape,
+                                encoder=encoder_filter, decoder=decoder_filter)
     input = tf.placeholder(tf.float32, shape)
     # initialize model
     loss = ae.loss(input)

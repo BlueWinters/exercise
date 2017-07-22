@@ -1,17 +1,20 @@
 # tensorflow version 1.10
 
 import tensorflow as tf
+import numpy as np
 import os
 import time
 
 from tensorflow.examples.tutorials.mnist import input_data
 
-class Autoencoder(object):
-    def __init__(self, sess, encoder, z_dim, decoder, name='Autoencoder'):
+class ContractiveAutoencoder(object):
+    def __init__(self, sess, encoder, z_dim, decoder, alpha, name='ContractiveAutoencoder'):
         self.encoder = encoder
         self.z_dim = z_dim
         self.decoder = decoder
+        self.alpha = alpha
         self.name = name
+        # session
         self.sess = sess
 
         self._init_vars()
@@ -53,8 +56,14 @@ class Autoencoder(object):
             a = tf.matmul(input, W) + b
         return tf.nn.sigmoid(a)
 
+    def _get_w_square(self, name):
+        with tf.variable_scope(name, reuse=True) as vs:
+            W = tf.get_variable('W')
+        return tf.reduce_sum(tf.square(W), axis=1, keep_dims=True)
+
     def loss(self, input):
         h = []
+        # noise input
         h.append(input)
 
         with tf.variable_scope(self.name, reuse=True) as vs:
@@ -65,6 +74,10 @@ class Autoencoder(object):
             with tf.variable_scope('encoder', reuse=True) as vs:
                 for n, (in_dim, out_dim) in enumerate(zip(in_list, out_list)):
                     h.append(self._feedward(h[-1], 'layer_'+str(n)))
+            # jacobian loss
+            w_square = self._get_w_square(name='layer_'+str(0))
+            grad = h[-1] * (1 - h[-1])
+
             # decoder
             in_list = [self.z_dim]
             in_list.extend(self.decoder[:-1])
@@ -72,8 +85,8 @@ class Autoencoder(object):
             with tf.variable_scope('decoder', reuse=True) as vs:
                 for n, (in_dim, out_dim) in enumerate(zip(in_list, out_list)):
                     h.append(self._feedward(h[-1], 'layer_'+str(n)))
-        # return MSE loss
-        return tf.reduce_mean(tf.square(h[-1] - input))
+        # return MSE reconstruct and Jacobian matrix
+        return tf.reduce_mean(tf.square(h[-1] - input)) + self.alpha * tf.reduce_mean(grad * w_square)
 
     def save(self, path):
         saver = tf.train.Saver(self.vars)
@@ -99,7 +112,7 @@ if __name__ == '__main__':
 
     # construct model
     sess = tf.Session()
-    ae = Autoencoder(sess, encoder=encoder, z_dim=z_dim, decoder=decoder)
+    ae = ContractiveAutoencoder(sess, encoder=encoder, z_dim=z_dim, decoder=decoder)
     input = tf.placeholder(tf.float32, shape)
     # initialize model
     loss = ae.loss(input)
@@ -118,6 +131,7 @@ if __name__ == '__main__':
         total_batch = int(mnist.train.num_examples / batch_size)
         avg_loss = 0
         for i in range(total_batch):
+            # get data
             batch_x, _ = mnist.train.next_batch(batch_size)
 
             batch_x = batch_x.reshape(shape)
