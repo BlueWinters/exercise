@@ -47,7 +47,30 @@ def variable_scope_reuse():
     # root/var2:0
     # root/var1:0
 
+def variable_scope_init_reuse():
+    with tf.variable_scope('root', reuse=True) as scope:
+        var1 = tf.get_variable('var1', shape=[1], dtype=tf.float32)
+        print(var1.name)
+
+    # 错误输出
+    # Variable root/var1 does not exist, or was not created with tf.get_variable().
+    # Did you mean to set reuse=None in VarScope?
+
+def variable_scope_reuse_False():
+    with tf.variable_scope('root', reuse=False) as scope:
+        var1 = tf.get_variable('var1', shape=[1], dtype=tf.float32)
+    print(var1.name)
+
+    with tf.variable_scope('root', reuse=None) as scope:
+        var2 = tf.get_variable('var2', shape=[1], dtype=tf.float32)
+    print(var2.name)
+
+    # 输出
+    # root/var1:0
+    # root/var2:0
 
 if __name__ == '__main__':
-    name_scope_and_variable_scope()
+    # name_scope_and_variable_scope()
     # variable_scope_reuse()
+    # variable_scope_init_reuse()
+    variable_scope_reuse_False()
