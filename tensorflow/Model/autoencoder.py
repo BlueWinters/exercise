@@ -40,11 +40,11 @@ class Autoencoder(object):
 
     def _set_layer_vars(self, in_dim, out_dim, name, stddev=0.1):
         with tf.variable_scope(name) as vs:
-            k = tf.get_variable('W', [in_dim, out_dim],
+            W = tf.get_variable('W', [in_dim, out_dim],
                                 initializer=tf.truncated_normal_initializer(stddev=stddev))
             b = tf.get_variable('b', [out_dim],
                                 initializer=tf.constant_initializer(0))
-        return k, b
+        return W, b
 
     def _feedward(self, input, name):
         with tf.variable_scope(name, reuse=True) as vs:
