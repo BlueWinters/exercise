@@ -7,24 +7,32 @@ import time
 from tensorflow.examples.tutorials.mnist import input_data
 
 class AutoencoderV2(object):
-    def __init__(self, sess, encoder, z_dim, decoder, name='Autoencoder'):
+    def __init__(self, encoder=[28*28], z_dim=400, decoder=[28*28],
+                 batch_size=100, num_epochs=100):
         self.encoder = encoder
         self.z_dim = z_dim
         self.decoder = decoder
-        self.name = name
-        self.sess = sess
+        self.batch_size = batch_size
+        self.num_epochs = num_epochs
+
+        self.sess = tf.Session()
         self.learn_rate = 1e-3
 
         self._init_layer_set()
         self._init_loss()
 
+    def __del__(self):
+        self.sess.close()
+
     def _init_loss(self):
+        shape = [self.batch_size, self.encoder[0]]
         self.x = tf.placeholder(tf.float32, shape, name='input')
 
         h = self.x
         for n in range(len(self.layer_set)-1):
             in_dim, out_dim = self.layer_set[n], self.layer_set[n+1]
             h = self._feedward(h, in_dim, out_dim, 'layer{}'.format(n))
+        self._summary_mnist(h)
 
         with tf.name_scope('loss') as scope:
             square_loss = tf.reduce_sum(tf.square(self.x - h), axis=[1])
@@ -66,13 +74,29 @@ class AutoencoderV2(object):
         with tf.name_scope('bias') as scope:
             tf.summary.histogram('b', b)
 
-    def train(self, input):
-        merged, loss, _ = self.sess.run([self.merged, self.loss, self.trainer],
-                                        {self.x:input})
-        return merged, loss
+    def _summary_mnist(self, output):
+        with tf.name_scope('output') as scope:
+            mnist = tf.reshape(output, [-1, 28, 28, 1])
+            tf.summary.image('mnist', mnist, 10)
 
-    def add_summary(self, merged, n):
-        self.writer.add_summary(merged, n)
+    def train_on_mnist(self):
+        mnist = input_data.read_data_sets("./mnist/", one_hot=True)
+
+        total_batch = int(mnist.train.num_examples / self.batch_size)
+        counter = 0
+        shape = [self.batch_size, self.encoder[0]]
+
+        for epoch in range(self.num_epochs):
+            average_loss = 0
+            for i in range(total_batch):
+                batch_x, batch_y = mnist.train.next_batch(self.batch_size)
+                batch_x = batch_x.reshape(shape)
+                summary, loss, _ = self.sess.run([self.merged, self.loss, self.trainer],
+                                                 {self.x:batch_x})
+                average_loss += loss / total_batch
+                self.writer.add_summary(summary, counter)
+                counter += 1
+        print("Epoch : {:04d}/{:04d}, Loss : {:9f}".format(epoch+1, self.num_epochs, average_loss))
 
     def save(self, path):
         saver = tf.train.Saver(self.vars)
@@ -88,35 +112,8 @@ class AutoencoderV2(object):
 
 if __name__ == '__main__':
     # set parameters
-    encoder = [28*28]
-    z_dim = 1000
-    decoder = [28*28]
-    num_epochs = 100
-    batch_size = 100
-    learn_rate = 1e-3
-    shape = [batch_size, 28*28]
+    config = {'encoder':[28*28], 'decoder':400, 'z_dim':400,
+              'batch_size':100, 'num_epochs':100}
 
-    # construct model
-    sess = tf.Session()
-    ae = AutoencoderV2(sess, encoder=encoder, z_dim=z_dim, decoder=decoder)
-
-    # read data
-    mnist = input_data.read_data_sets("./mnist/", one_hot=True)
-
-    # train model
-    start_time = time.time()
-    for epoch in range(num_epochs):
-        total_batch = int(mnist.train.num_examples / batch_size)
-        avg_loss = 0
-        for i in range(total_batch):
-            batch_x, _ = mnist.train.next_batch(batch_size)
-            batch_x = batch_x.reshape(shape)
-
-            summary, loss = ae.train(batch_x)
-            avg_loss += loss / total_batch
-            ae.add_summary(summary, epoch)
-        print("Epoch : {:04d}, Loss : {:9f}".format(epoch + 1, avg_loss))
-    print("Training time : {}".format(time.time() - start_time))
-
-    # close session
-    sess.close()
+    autoencoder = AutoencoderV2()
+    autoencoder.train_on_mnist()
