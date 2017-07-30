@@ -81,9 +81,7 @@ class AutoencoderV2(object):
 
     def train_on_mnist(self):
         mnist = input_data.read_data_sets("./mnist/", one_hot=True)
-
         total_batch = int(mnist.train.num_examples / self.batch_size)
-        counter = 0
         shape = [self.batch_size, self.encoder[0]]
 
         for epoch in range(self.num_epochs):
@@ -94,9 +92,8 @@ class AutoencoderV2(object):
                 summary, loss, _ = self.sess.run([self.merged, self.loss, self.trainer],
                                                  {self.x:batch_x})
                 average_loss += loss / total_batch
-                self.writer.add_summary(summary, counter)
-                counter += 1
-        print("Epoch : {:04d}/{:04d}, Loss : {:9f}".format(epoch+1, self.num_epochs, average_loss))
+            self.writer.add_summary(summary, epoch)
+        print("Epoch : {:d}/{:d}, Loss : {:9f}".format(epoch+1, self.num_epochs, average_loss))
 
     def save(self, path):
         saver = tf.train.Saver(self.vars)

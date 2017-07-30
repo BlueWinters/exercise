@@ -2,7 +2,7 @@
 
 import tensorflow as tf
 
-def concat_tow_variable():
+def concat_to_variable():
     A = tf.get_variable(name='A', shape=[2,3])
     B = tf.get_variable(name='B', shape=[2,5])
     C = tf.get_variable(name='C', shape=[4,3])
@@ -15,6 +15,28 @@ def concat_tow_variable():
     print(A_B.shape)
     print(A_C.shape)
 
+    # 输出
+    # (2, 8)
+    # (6, 3)
+
+def slice_to_variable():
+    A = tf.get_variable(name='A', shape=[6,8])
+
+    # 切割数据
+    A1 = tf.slice(A, [0,0], [2,-1])
+    A2 = tf.slice(A, [3,0], [3,-1])
+
+    print(A1.shape)
+    print(A2.shape)
+
+    shape = tf.shape(A)
+    s1 = shape[0]
+
+    # 输出：
+    # (2, 8)
+    # (3, 8)
+
 
 if __name__ == '__main__':
-    concat_tow_variable()
+    # concat_to_variable()
+    slice_to_variable()

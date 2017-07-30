@@ -37,8 +37,8 @@ def variable_scope_reuse():
         print(var2.name)
 
     # 变量的reuse，var1和var1_2的name是一样的
-    with tf.variable_scope('root') as scope:
-        scope.reuse_variables()
+    with tf.variable_scope('root', reuse=True) as scope:
+        # scope.reuse_variables()
         var1_2 = tf.get_variable('var1', shape=[1], dtype=tf.float32)
         print(var1_2.name)
 
@@ -71,6 +71,6 @@ def variable_scope_reuse_False():
 
 if __name__ == '__main__':
     # name_scope_and_variable_scope()
-    # variable_scope_reuse()
+    variable_scope_reuse()
     # variable_scope_init_reuse()
-    variable_scope_reuse_False()
+    # variable_scope_reuse_False()
