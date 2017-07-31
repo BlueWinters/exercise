@@ -93,7 +93,7 @@ class AutoencoderV2(object):
                                                  {self.x:batch_x})
                 average_loss += loss / total_batch
             self.writer.add_summary(summary, epoch)
-        print("Epoch : {:d}/{:d}, Loss : {:9f}".format(epoch+1, self.num_epochs, average_loss))
+            print("Epoch : {:d}/{:d}, Loss : {:9f}".format(epoch+1, self.num_epochs, average_loss))
 
     def save(self, path):
         saver = tf.train.Saver(self.vars)

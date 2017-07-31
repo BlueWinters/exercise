@@ -97,6 +97,5 @@ def summary_graph2():
 
 
 if __name__ == '__main__':
-    # summary_graph()
+    summary_graph1()
     # summary_graph2()
-    pass
