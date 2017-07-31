@@ -69,8 +69,16 @@ def variable_scope_reuse_False():
     # root/var1:0
     # root/var2:0
 
+def variable_scope_init_with_reuse_True():
+    with tf.variable_scope('root', reuse=True) as scope:
+        var1 = tf.get_variable('var1', shape=[1], dtype=tf.float32)
+    print(var1.name)
+
+
+
 if __name__ == '__main__':
     # name_scope_and_variable_scope()
-    variable_scope_reuse()
+    # variable_scope_reuse()
     # variable_scope_init_reuse()
     # variable_scope_reuse_False()
+    variable_scope_init_with_reuse_True()
