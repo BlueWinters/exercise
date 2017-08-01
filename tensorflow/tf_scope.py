@@ -69,8 +69,25 @@ def variable_scope_reuse_False():
     # root/var1:0
     # root/var2:0
 
+def name_scope_reuse():
+    with tf.variable_scope('root'):
+        var1 = tf.get_variable('var1', shape=[1])
+        var2 = tf.get_variable('var2', shape=[1])
+
+        with tf.name_scope('sub1') as scope:
+            sub1 = var1 + var2
+            print(sub1.name)
+        with tf.name_scope('sub1'):
+            sub2 = var1 + var2
+            print(sub2.name)
+
+    # 输出
+    # root/sub1/add:0
+    # root/sub1_1/add:0
+
 if __name__ == '__main__':
     # name_scope_and_variable_scope()
-    variable_scope_reuse()
+    # variable_scope_reuse()
     # variable_scope_init_reuse()
     # variable_scope_reuse_False()
+    name_scope_reuse()
