@@ -48,7 +48,17 @@ def diff_list_extend_append():
     # [1, 2, '9']
     # [1, 2, {'age': 10}]
 
+def modify_list_in_method():
+    def modify_method(in_list):
+        for n in range(len(in_list)):
+            in_list[n] += n+2
+
+    in_list = [1,2]
+    print(in_list)
+    modify_method(in_list)
+    print(in_list)
 
 
 if __name__ == '__main__':
-    diff_list_extend_append()
+    # diff_list_extend_append()
+    modify_list_in_method()
