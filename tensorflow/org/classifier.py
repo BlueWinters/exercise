@@ -11,4 +11,4 @@ def var_initializer(layer_set):
 def init_classifier(in_dim, h_dim, out_dim):
     layer1['w'] = tf.get_variable(name='layer1_w', shape=[None,in_dim], dtype=tf.float32,
                                   initializer=tf.random_normal())
-    layer1['b'] =
+    layer1['b'] = 0
