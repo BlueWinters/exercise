@@ -7,7 +7,7 @@ import time
 from tensorflow.examples.tutorials.mnist import input_data
 
 class AutoencoderV2(object):
-    def __init__(self, encoder=[28*28], z_dim=400, decoder=[28*28],
+    def __init__(self, encoder=[784,1000,1000], z_dim=2, decoder=[1000,1000,784],
                  batch_size=100, num_epochs=100):
         self.encoder = encoder
         self.z_dim = z_dim
@@ -114,3 +114,4 @@ if __name__ == '__main__':
 
     autoencoder = AutoencoderV2()
     autoencoder.train_on_mnist()
+    autoencoder.save('ckpt/model.ckpt')
